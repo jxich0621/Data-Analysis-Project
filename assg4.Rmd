@@ -1,0 +1,171 @@
+---
+title: "assg4"
+author: "Xicheng Jiang"
+date: "2018/11/17"
+output: html_document
+---
+
+1. For those in the first class: Consider the question of estimating the Fama-French 3 factor model (FF3) for IBM and Apple (ticker symbols IBM and AAPL) using the Gaussian and student-t (nu = 2.5) SURE models. Suppose you decide to work with the weekly data from 2000-01-01 to 2018-06-30 on these stocks.
+
+a. Download the data needed to estimate these models. Call the data.frame you download prmdforig.
+
+```{r}
+library(quantmod)
+library(m537)
+library(m537tools)
+prmdforig = getfinwdat(symbols = c("IBM","AAPL","^gspc"),
+symnames = c("ibm","apple","sp500"),
+from = "2000-01-01",
+to = "2018-06-30")
+prmdforig=na.omit(prmdforig)
+```
+
+b. Define the formula of the FF3 SURE model for IBM and Apple in a list called ff3frmls. Make sure to exclude the intercepts.
+
+```{r}
+ff3frmls = list(prmibm ~ prmsp500+hml+smb-1,
+                prmapple ~ prmsp500+hml+smb-1)
+```
+
+c. Use the trainpriorsureg function (with 15% of the initial data) to make an object called priorls that contains the training sample prior for both (meaning Gaussian and student-t) SURE models. Explain what beta0_, B0_, rho, and Sigma0_ in priorls represent.
+
+```{r}
+priorls = trainpriorsureg(modelfrmls = ff3frmls,
+                          data = prmdforig,
+                          trainpct = .15)
+               
+```
+
+1) beta0_ in priorls represent the prior mean of the estimators. It is a 6*1 vector because there are 3 groups of betas (betas for market index, sml and hmb respectively) and each groups of betas are estimations for the two variables.
+
+2) B0_ represents the prior variance of the estimators. It is a 6*6 matrix as it contains variances and covariances for all the beta estimators in beta0_
+
+3) rho represents the tightness of the prior. It denotes whether the prior is compact (like Normal (0,1)) or scattered (like Normal (0,10)).
+
+4) Sigma0_ is the variance-covariance matrix of the errors for the two variables.
+
+d. Now remove the rows of data from prmdforig that were used to construct the training sample prior. Call the resulting data.frame prmdf.
+
+```{r}
+nt = priorls$nt
+prmdf = prmdforig
+prmdf = prmdf[-(1:nt),,drop = FALSE]
+dim(prmdf)
+```
+
+e. Now suppose that you will use the most current 10 weeks of data to do predictive testing. Let s = 10 stand for the number of weeks in the prediction sample. Construct a data.frame called prmdfn by removing the last s rows of prmdf. Also construct a data.frame called prmdff that has only the last s rows of prmdf.
+
+```{r}
+prmdfn = head(prmdf , nrow(prmdf)-10)
+prmdff = tail(prmdf , 10)
+```
+
+f. Now estimate the Gaussian and student-t FF3 SURE models on the data in prmdfn using the training sample prior you constructed in (c) above. Call the MCMC output for the Gaussian SURE model outn and the MCMC output for the student-t SURE model outtn. Which model is preferred by the marginal likelihood criterion?
+
+```{r}
+datls = suremat(modelfrmls = ff3frmls,datdf = prmdfn);
+head(cbind(datls$y,datls$Xs));
+
+outn = MCMCsureg(modelfrmls = ff3frmls,
+                 data = prmdfn,
+                 trainprior = FALSE,
+                 beta0_ = priorls$beta0_,
+                 B0_ = priorls$B0_,
+                 rho = priorls$rho,
+                 Sigma0_ = priorls$Sigma0_)
+
+outtn = MCMCsuret(modelfrmls = ff3frmls,
+                 data = prmdfn,
+                 trainprior = FALSE,
+                 beta0_ = priorls$beta0_,
+                 B0_ = priorls$B0_,
+                 rho = priorls$rho,
+                 Sigma0_ = priorls$Sigma0,
+                 nu = 2.5)
+outnmar = logmarglik(outn)
+outtnmar = logmarglik(outtn)
+print(outnmar)
+print(outtnmar)
+```
+
+The marginal likelihood for the model with Gaussian error is 3364.049 while the marginal likelihood for the model with student-t error (nu = 2.5) is 3474.829. So the student-t model is preferred.
+
+g. Now compare the Gaussian and student-t SURE models with the predictive likelihood. Use the difference of marginal likelihood method to calculate the predictive likelihood. Which SURE model is preferred on the predictive likelihood criterion?
+
+```{r}
+datls = suremat(modelfrmls = ff3frmls,datdf = prmdf);
+outnfull = MCMCsureg(modelfrmls = ff3frmls,
+                     data = prmdf,
+                     trainprior = FALSE,
+                     beta0_ = priorls$beta0_,
+                     B0_ = priorls$B0_,
+                     rho = priorls$rho,
+                     Sigma0_ = priorls$Sigma0_)
+outtnfull = MCMCsuret(modelfrmls = ff3frmls,
+                      data = prmdf,
+                      trainprior = FALSE,
+                      beta0_ = priorls$beta0_,
+                      B0_ = priorls$B0_,
+                      rho = priorls$rho,
+                      Sigma0_ = priorls$Sigma0,
+                      nu = 2.5)
+outnfullmar = logmarglik(outnfull)
+outtnfullmar = logmarglik(outtnfull)
+predictivelikg = outnfullmar - outnmar
+predictivelikt = outtnfullmar - outtnmar
+print(predictivelikg)
+print(predictivelikt)
+```
+
+The predictive likelihood turns out to be 44.20022 for the gaussian error model and 47.79817 for the t error model. This time still the second model is preferred.
+
+h. The following code calculates the predictive likelihood of the student-t SURE model by the direct method. Can you explain what is going on in this code? Explain as much of the code as you can.
+
+```{r}
+## turn the data into SURE form y=Xbeta + e
+## here the data are the 10 weeks data for prediction
+suredatfls = suremat(modelfrmls = ff3frmls,
+                     datdf = prmdff)
+
+## extract y from the data list (10 * 2)
+yf = suredatfls$y
+
+## extract Xs from the data list (10 * 2 * 6)
+Xf = suredatfls$Xs
+
+## extract the number of estimators for each model
+kvec = suredatfls$kvec
+
+## number of dependent variables
+d = length(kvec)
+
+## how many estimators in total
+k = sum(kvec)
+
+
+dd = dim(outtn)[2]-k
+s = length(yf)/d
+nu = 2.5
+m = dim(outtn)[1]
+predlikm = matrix(0,nr = m)
+predlikg = matrix(0,nr = s)
+for (g in 1:m) {
+betag = outtn[g,1:k];
+sigg = outtn[g,(k+1):(k+dd)];
+Sigg = xpnd(sigg);
+Taugg = (nu-2)*Sigg/nu; ## convert to dispersion matrix
+Pg = solve(Taugg);
+lPg = log(det(Pg));
+r = 1;
+for (t in 1:s) {
+yt = yf[r:(r+d-1),,drop = FALSE]
+Xt = Xf[r:(r+d-1),,drop = FALSE]
+predlikg[t] = dmvt1(yt,Xt%*%betag,Pg,lPg,nu = 2.5)
+r = r + d
+}
+predlikm[g] = sum(predlikg)
+}
+predlik = pdfavg(predlikm)
+```
+
+for each week t in the 10 weeks, this method calculates the log likelihood of those (yt and Xt*betag)s starting from week 1 ending at week t coming from a nu=2.5 t distribution and sum the 10 likelihoods together. And it does this process 10000 times, using the 10000 different betag and Sigmag from the corresponding estimation from "outtn". Finally it takes average of the 10000 likelihoods and get the final value. 

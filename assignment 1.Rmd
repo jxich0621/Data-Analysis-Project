@@ -1,0 +1,160 @@
+---
+title: "Assignment 1"
+author: "Xicheng Jiang"
+date: "2018/9/30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Questions:
+
+1.  How would do the following tasks in R?
+
+a. Generate a numeric sequence x1 that starts from -1.25 and goes to 1.25 in
+increments of .01. Then show how you would find the length of x1, its class
+and attributes
+
+```{r}
+x1=seq(-1.25,1.25,0.01) #generating x1
+length(x1) # length of x1
+class(x1) # class of x1
+attributes(x1) # attributes of x1
+```
+
+b. Generate a random sequence x2 of 1000 draws from the standard normal
+distribution with the seed for the sequence set to 25.
+
+```{r}
+set.seed(25)
+x2=rnorm(1000)
+```
+
+c. Create a character vector x3 consisting of the names of five of your favorite consumer brands.
+
+```{r}
+x3=c("Pepsi","Starbucks","McDonald's","Nestle","RedBull")
+class(x3)
+```
+
+d. Creat a matrix X4 from x2 consisting of 200 rows and 5 columns.
+
+```{r}
+X4=matrix(x2,nr=200,nc=5)
+
+```
+
+e. Creat a data.frame object called datdf in which the first column has the name
+dts consisting of dates from 2001-01-01 by month, followed by four columns of
+the data in X4 with column names var1, var2, var3, var4.
+
+```{r}
+
+dts=seq(as.Date("2001-01-01"),by="month",length.out=200)
+var1=X4[,1]
+var2=X4[,2]
+var3=X4[,3]
+var4=X4[,4]
+datdf=data.frame(dts,var1,var2,var3,var4)
+```
+
+f. Create a list object myls containing the objects in questions a-e.
+
+```{r}
+myls=list(x1,x2,x3,X4,datdf)
+```
+
+2.  Additional R questions.
+
+a. How is the function attr() used to add meta-data to an R-object? Give
+an example by adding some meta-data of your choosing to the object x3 in
+question 1.
+
+```{r}
+attr(x3,"type")="brand"
+attr(x3,"preference")="favorite"
+attributes(x3)
+```
+
+b. How would you extract the last ten rows of the matrix X4 in question 1?
+
+```{r}
+X4[(nrow(X4)-10):nrow(X4),1:5]
+
+```
+
+c. How would you extract the first column of datdf by its column name?
+
+```{r}
+datdf[,"dts"]
+```
+
+d. How could you save datdf to disk, remove it from the global environment, and
+then load it back into your session?
+
+```{r}
+write.csv(datdf,file="datdf.csv")
+rm(datdf)
+datdf=read.csv("datdf.csv")[,-1]
+
+```
+
+3.  Write a function named matmultiply that takes matrices X and Y and
+returns the matrix product. In the function body, how would you include a check
+that the inputs are matrices and conformable for matrix multiplication?
+
+```{r}
+matmultiply=function(X = X, Y = Y){
+  if(class(X)!="matrix"){
+    stop("X should be matrix")
+  }
+  else{
+    if(class(Y)!="matrix"){
+      stop("Y should be matrix")
+    }
+    else{
+          if(dim(X)[2]!=dim(Y)[1]){
+            stop("ncolumn of X does not equal to nrow of Y")
+          }
+          else{
+            ans=matrix(nr=dim(X)[1],nc=dim(Y)[2])
+            for(i in 1:dim(X)[1]){
+              for(j in 1:dim(Y)[2]){
+                sum=0
+                for(k in 1:dim(X)[2]){
+                  sum = sum + X[i,k]*Y[k,j]
+                }
+                ans[i,j]=sum
+              }
+            }
+          }
+    }
+      
+  }
+  return(ans)
+}
+
+```
+
+4. Consider the following model 
+    y = β0 + β1x + σε
+  where
+    ε ∼ N(0, 1)
+  and (β0, β1, σ) are parameters. Suppose that you had a value of x given to you, and you also had a matrix (call it) outm with m rows and 3 columns of possible values of the parameters. How could you use Monte Carlo simulation to take outm and x as inputs (and perhaps a third input which is the seed for the simulation) and output a m times 1 matrix of possible values of y. Write a function to do this job.
+  
+```{r}
+# The function has 3 variables
+# outm, x as well as the number of seed
+simulation = function(outm = outm, x=x, seed=seed){
+  set.seed(seed)
+  ans = matrix(nr=nrow(outm),nc=1)
+  ans[1,1] = outm[1,1]+outm[1,2]*x+outm[1,3]*rnorm(1)
+  for(i in 2:nrow(outm)){
+    ans[i,1] = outm[i,1]+outm[i,2]*ans[i-1,1]+outm[i,3]*rnorm(1)
+  }
+  return(ans)  
+}
+```
+

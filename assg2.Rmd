@@ -1,0 +1,166 @@
+---
+title: "assignment 2"
+author: "Xicheng Jiang"
+date: "2018/10/20"
+output: html_document
+---
+
+1. [20 points] For those in the first class: Consider the question of estimating the CAPM model for Apple (ticker symbol AAPL). Suppose you want to estimate this model with the last 10 years of weekly data on this stock.
+
+a. Provide R code for downloading the stock premium data, along with other data needed to estimate the CAPM model.
+
+```{r}
+library(quantmod)
+library(m537)
+library(m537tools)
+prmdf = getfinwdat(symbols = c("AAPL","^gspc"),
+symnames = c("apple","sp500"),
+from = "2008-06-30",
+to = "2018-06-30")
+prmdf=na.omit(prmdf)
+```
+
+b.Use ggplot2 to make a time series plot of AAPL premium data. Include time stamps and comment on what you see.
+
+```{r}
+dts = seq(from = as.Date("2008-07-11"),to = as.Date("2018-06-29"), by = "weeks")
+prmdf2 = cbind(prmdf, dts)
+p = ggplot(data = prmdf2,
+           aes(x = dts,
+               y = prmapple))
+p1 = p + geom_line()
+p2 = p1 + scale_x_date(date_breaks = "10 weeks")
+p3 = p2 +
+theme(axis.text.x = element_text(size = 10,
+angle = 90,
+colour = "black",
+vjust = 1,
+hjust = 1))
+plot(p3)
+```
+
+Comment: this time-series plot shows that in this 10 years, apple's premium vibrated within a small interval between -0.1 and 0.1, with an exception that in September 2008 apple's stock price fell sharply, with a risk premium less than -0.2.
+
+c. Assume the error term in the CAPM model is Gaussian and use the appropriate function in the m537 package to estimate the model. Assume the default training sample prior that is based on initial 15% of the data. Provide some reasons for using such a prior.
+
+Using the MCMC Gaussian Regression. Compare the value of log marginal likelihood of the model with intercept and the model without intercept. 
+
+```{r}
+capm = MCMCregressg(prmapple~prmsp500,
+                    data = prmdf)
+capm2 = MCMCregressg(prmapple~prmsp500-1,
+                    data = prmdf)
+logmarglik(list(capm,capm2))
+```
+
+Since the model without intercept has a larger log marginal likelihood, we choose the second model.
+
+Reason: we know that the posterior distribution is proportional to the prior multiplied by the likelihood function. Using initial 15% of the data means that we regard the remaining 85% of the data as "evidence", and the initial 15% data contribute the prior "before the evidence happens", and 85% of the data are big enough to tell the story of the whole event. So this method is feasible.
+
+
+d. Estimate the CAPM model and report the mcmcsummary of the posterior distribution. Comment on the marginal posterior distribution and comment on how this posterior distribution differs from that of IBM’s posterior distribution over the same period.
+
+```{r}
+summarymcmc(capm2,header = T)
+## Codes below are for ibm's regression summary
+prmdf3 = getfinwdat(symbols = c("IBM","^gspc"),
+symnames = c("ibm","sp500"),
+from = "2008-06-30",
+to = "2018-06-30")
+prmdf3=na.omit(prmdf3)
+capm3 = MCMCregressg(prmibm~prmsp500-1,
+                    data = prmdf3)
+summarymcmc(capm3,header = T)
+
+```
+
+Comment: the coefficient of prmapple on prmsp500 has a mean of 1.0757, with a 0.072 standard deviation, which is very small compared to the coefficient value, its highest value is 1.2164, while lowest is 0.9350. The coefficient of prmibm on prmsp500 has a mean of 0.8519, with a 0.0467 standard deviation, lowest 0.7604 and highest 0.9435. So we can see that generally, during the last ten years, apple's stock premium was more sensitive to the market volatility than the ibm's.
+
+
+
+3.[30 points] For students in both classes: Consider this problem which is similar to the one discussed in class. Suppose that data is generated from the following model:
+
+```{r}
+library(m537)
+library(m537tools)
+set.seed(100)
+n = 500;
+rho = .85;
+p = 5
+Sigma = matrix(rho,nr = p,nc = p)
+diag(Sigma) = rep(1,5);
+Sigmainv = solve(Sigma)
+Lp = chol(Sigmainv)
+X = matrix(0,nr = n,nc = p)
+mu = rep(.5,p);
+for (i in 1:n) {
+x = rmvn(mu,Lp)
+X[i,] = x;
+}
+colnames(X) = paste("x",1:p,sep = "")
+y = 0.5*rep(1,n) + X[,1]*.3 + X[,2]*.4 + X[,3]*.5 +.6*rnorm(n)
+datdf = data.frame(y = y,X)
+```
+
+a. Now suppose that you are given the data in datdf. Your goal is to determine the best Gaussian regression model for these data (assume that you do not know how y
+was generated but that you know that the x variables can only enter linearly in the model). How would you estimate the 31 possible models (ignore the model in which no x’s enter) and use the log marginal likelihood criterion to find the best model?
+
+
+Using the MCMC Gaussian Regression to estimate those models and select the model with the largest log marginal likelihood (the largest goodness of fit).
+
+Codes are shown below
+
+```{r}
+## this program is a little bit slow
+
+## k is the log marginal likelihood for each model specification
+## b is the model specification
+## m is the number of regressors
+
+## set an initial value
+k= logmarglik(list(MCMCregressg(y~x5,
+                      data = datdf)))
+b=c(0,0,0,0,1)
+m=1:5
+
+## for each specification, compare k, replace small k with large k
+## record b with large k
+for(b1 in 0:1){
+  for(b2 in 0:1){
+    for(b3 in 0:1){
+      for(b4 in 0:1){
+        for(b5 in 0:1){
+          if(b1*b2*b3*b4*b5!=1){
+            xnam = paste0("x", m[c(-1*(1-b1),-2*(1-b2),-3*(1-b3),-4*(1-b4),-5*(1-b5))])}
+          else{
+            xnam = paste0("x",m)
+          }
+            fmla = as.formula(paste("y ~ ", paste(xnam, collapse= "+")))
+            
+            
+          if((1-b1)*(1-b2)*(1-b3)*(1-b4)*(1-b5)!=1){
+            if(logmarglik(list(MCMCregressg(fmla,
+                      data = datdf)))>=k){
+              k=logmarglik(list(MCMCregressg(fmla,
+                      data = datdf)))
+              b=c(b1,b2,b3,b4,b5)
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+print(k)
+print(b)
+```
+
+We see that the best supported model is y ~ x1 + x2 + x3
+
+
+
+b. What is the value of the log marginal likelihood for the best supported model?
+
+From the result shown above, it is -417.7782.
+

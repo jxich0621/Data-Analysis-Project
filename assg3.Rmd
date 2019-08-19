@@ -1,0 +1,102 @@
+---
+title: "Assg3"
+author: "Xicheng Jiang"
+date: "2018/11/2"
+output: html_document
+---
+
+1. [50 points] For those in the first class: Consider the question of estimating the Fama-French 3 model for Apple (ticker symbol AAPL). Suppose you decide to work with the last 10 years of weekly data on this stock.
+
+a. After downloading the data, set aside 10 weeks of the most current data in a data.frame called prmdff for purposes of out-of-sample validation. Keep the
+remaining data in a data.frame called prmdf. Give R code for creating these
+two data.frame objects.
+
+```{r}
+library(quantmod)
+library(m537)
+library(m537tools)
+prmdf = getfinwdat(symbols = c("AAPL","^gspc"),
+                   symnames = c("apple","sp500"),
+                   from = "2008-06-30",
+                   to = "2018-06-30")
+prmdf = na.omit(prmdf)
+prmdff = tail(prmdf,10)
+prmdf = head(prmdf, nrow(prmdf)-10)
+```
+
+b. Now estimate the following models:
+
+   assuming that the error in each case is Gaussian and the prior distribution of the parameters is the default training sample prior. Which model is preferred by the marginal likelihood criterion?
+   
+```{r}
+ff = MCMCregressg(prmapple~prmsp500+hml+smb,
+                      data = prmdf)
+ffnc = MCMCregressg(prmapple~prmsp500+hml+smb-1,
+                      data = prmdf)
+logmarglik(list(ff,ffnc))
+```
+
+The first model has a marginal likelihood of 886.4284 while the second model has a marginal likelihood of 886.265. According to the marginal likelihood criterion, the first model (model with intercept) is preferred.
+
+c. Now estimate the following models:
+
+assuming that the error in each case is Student-t with 4.5 degrees of freedom
+(again work with the default training sample prior). Which of the models
+M1-M4 is preferred by the marginal likelihood criterion?
+
+```{r}
+fft = MCMCregresst(prmapple~prmsp500+hml+smb,
+                      data = prmdf,
+                      nu = 4.5)
+fftnc = MCMCregresst(prmapple~prmsp500+hml+smb-1,
+                      data = prmdf,
+                      nu = 4.5)
+logmarglik(list(ff,ffnc,fft,fftnc))
+```
+
+The third model has a marginal likelihood of 893.8169 while the fourth model has a marginal likelihood of 893.9597. According to the marginal likelihodd criterion, among these 4 models, M4 (student-t error without intercept) is preferred.
+
+d. Now compare these models in terms of the predictive likelihood, calculated
+for the data in prmdff. Which model is preferred by the predictive likelihood
+criterion?
+
+```{r}
+prmdfff = rbind(prmdf,prmdff)
+  
+fffull = MCMCregressg(prmapple~prmsp500+hml+smb,
+                      data = prmdfff)
+logmarglik(fffull)-logmarglik(ff)
+
+ffncfull = MCMCregressg(prmapple~prmsp500+hml+smb-1,
+                      data = prmdfff)
+logmarglik(ffncfull)-logmarglik(ffnc)
+
+fftfull = MCMCregresst(prmapple~prmsp500+hml+smb,
+                      data = prmdfff,
+                      nu = 4.5)
+logmarglik(fftfull)-logmarglik(fft)
+
+fftncfull = MCMCregresst(prmapple~prmsp500+hml+smb-1,
+                        data = prmdfff,
+                        nu = 4.5)
+logmarglik(fftncfull)-logmarglik(fftnc)
+```
+
+The predictive likelihoods of the four models are 13.94748, 13.87624, 17.56031 and 17.8405 respectively. Under the predictive likelihood criterion, the model M4 is still preferred.
+
+e. How do you think someone who was not using our Bayesian methods would
+have gone about comparing these 4 models? What conclusion about these
+models would they have been able to reach?
+
+If they do not use the Bayesian methods, they will use the frequentist methods, which assume the parameters are fixed. They will compare the goodness of fit of each model (e.g. adjusted R-squared) to pick a best model. 
+
+```{r}
+ffnb = lm(prmapple~prmsp500+hml+smb,
+                      data = prmdf)
+summary(ffnb)
+ffncnb = lm(prmapple~prmsp500+hml+smb-1,
+                      data = prmdf)
+summary(ffncnb)
+```
+
+In the linear model the error term is considered normal, so model 3 and 4 cannot be compared in terms of glm. Above codes compare the R-squared coefficients of M1 and M2, and show that M2 is preferred to M1, which contradict what we get in a Bayesian context.

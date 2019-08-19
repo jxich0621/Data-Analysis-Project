@@ -1,0 +1,256 @@
+---
+title: "final"
+author: "Xicheng Jiang, Lea Li, Xingyu Chen"
+date: "2018/12/9"
+output: html_document
+---
+
+First part:
+In this part we settle the stocks we gonna include in portfolios and fetch the weekly returns of those stocks from 2014-06-01 to 2018-06-01 from Internet.
+```{r}
+library(quantmod)
+library(xts)
+library(m537)
+library(m537tools)
+
+symbol = c("AAPL","FORD","IBM","BAC","AMZN",
+           "T","GOOG","DAL","AXP","LUV",
+           "ACN","CEA","AZZ","GS","MSFT",
+           "BA","BIDU","BP","BX","PFG",
+           "ALE","CS","ADDYY","APF","UBS",
+           "AEP","AI","HTA","ASB","FAF",
+           "^gspc")
+
+symbolName = c("AAPL","FORD","IBM","BAC","AMZN",
+               "T","GOOG","DAL","AXP","LUV",
+               "ACN","CEA","AZZ","GS","MSFT",
+               "BA","BIDU","BP","BX","PFG",
+               "ALE","CS","ADDYY","APF","UBS",
+               "AEP","AI","HTA","ASB","FAF",
+               "sp500")
+
+prmdf = getfinwdat(symbols = symbol,
+                   symnames = symbolName,
+                   from = "2014-06-01",
+                   to = "2018-06-01")
+```
+
+Second part:
+In this part we construct our 6 different portfolios and use SURE model with gaussian error and without intercept to estimate those portfolios.
+```{r}
+capmfrmls5 = list(prmAAPL~prmsp500-1,
+                  prmFORD~prmsp500-1,
+                  prmIBM~prmsp500-1,
+                  prmBAC~prmsp500-1,
+                  prmAMZN~prmsp500-1)
+
+capmfrmls10 = list(prmAAPL~prmsp500-1,
+                   prmFORD~prmsp500-1,
+                   prmIBM~prmsp500-1,
+                   prmBAC~prmsp500-1,
+                   prmAMZN~prmsp500-1,
+                   prmT~prmsp500-1,
+                   prmGOOG~prmsp500-1,
+                   prmDAL~prmsp500-1,
+                   prmAXP~prmsp500-1,
+                   prmLUV~prmsp500-1)
+
+capmfrmls15 = list(prmAAPL~prmsp500-1,
+                   prmFORD~prmsp500-1,
+                   prmIBM~prmsp500-1,
+                   prmBAC~prmsp500-1,
+                   prmAMZN~prmsp500-1,
+                   prmT~prmsp500-1,
+                   prmGOOG~prmsp500-1,
+                   prmDAL~prmsp500-1,
+                   prmAXP~prmsp500-1,
+                   prmLUV~prmsp500-1,
+                   prmACN~prmsp500-1,
+                   prmCEA~prmsp500-1,
+                   prmAZZ~prmsp500-1,
+                   prmGS~prmsp500-1,
+                   prmMSFT~prmsp500-1)
+
+capmfrmls20 = list(prmAAPL~prmsp500-1,
+                   prmFORD~prmsp500-1,
+                   prmIBM~prmsp500-1,
+                   prmBAC~prmsp500-1,
+                   prmAMZN~prmsp500-1,
+                   prmT~prmsp500-1,
+                   prmGOOG~prmsp500-1,
+                   prmDAL~prmsp500-1,
+                   prmAXP~prmsp500-1,
+                   prmLUV~prmsp500-1,
+                   prmACN~prmsp500-1,
+                   prmCEA~prmsp500-1,
+                   prmAZZ~prmsp500-1,
+                   prmGS~prmsp500-1,
+                   prmMSFT~prmsp500-1,
+                   prmBA~prmsp500-1,
+                   prmBIDU~prmsp500-1,
+                   prmBP~prmsp500-1,
+                   prmBX~prmsp500-1,
+                   prmPFG~prmsp500-1)
+
+capmfrmls25 = list(prmAAPL~prmsp500-1,
+                   prmFORD~prmsp500-1,
+                   prmIBM~prmsp500-1,
+                   prmBAC~prmsp500-1,
+                   prmAMZN~prmsp500-1,
+                   prmT~prmsp500-1,
+                   prmGOOG~prmsp500-1,
+                   prmDAL~prmsp500-1,
+                   prmAXP~prmsp500-1,
+                   prmLUV~prmsp500-1,
+                   prmACN~prmsp500-1,
+                   prmCEA~prmsp500-1,
+                   prmAZZ~prmsp500-1,
+                   prmGS~prmsp500-1,
+                   prmMSFT~prmsp500-1,
+                   prmBA~prmsp500-1,
+                   prmBIDU~prmsp500-1,
+                   prmBP~prmsp500-1,
+                   prmBX~prmsp500-1,
+                   prmPFG~prmsp500-1,
+                   prmALE~prmsp500-1,
+                   prmCS~prmsp500-1,
+                   prmADDYY~prmsp500-1,
+                   prmAPF~prmsp500-1,
+                   prmUBS~prmsp500-1)
+
+capmfrmls30 = list(prmAAPL~prmsp500-1,
+                   prmFORD~prmsp500-1,
+                   prmIBM~prmsp500-1,
+                   prmBAC~prmsp500-1,
+                   prmAMZN~prmsp500-1,
+                   prmT~prmsp500-1,
+                   prmGOOG~prmsp500-1,
+                   prmDAL~prmsp500-1,
+                   prmAXP~prmsp500-1,
+                   prmLUV~prmsp500-1,
+                   prmACN~prmsp500-1,
+                   prmCEA~prmsp500-1,
+                   prmAZZ~prmsp500-1,
+                   prmGS~prmsp500-1,
+                   prmMSFT~prmsp500-1,
+                   prmBA~prmsp500-1,
+                   prmBIDU~prmsp500-1,
+                   prmBP~prmsp500-1,
+                   prmBX~prmsp500-1,
+                   prmPFG~prmsp500-1,
+                   prmALE~prmsp500-1,
+                   prmCS~prmsp500-1,
+                   prmADDYY~prmsp500-1,
+                   prmAPF~prmsp500-1,
+                   prmUBS~prmsp500-1,
+                   prmAEP~prmsp500-1,
+                   prmAI~prmsp500-1,
+                   prmHTA~prmsp500-1,
+                   prmASB~prmsp500-1,
+                   prmFAF~prmsp500-1)
+```
+
+Third part:
+In this part we calculate the training sample priors for each portfolio, and extract the descriptive data for the 15-stock portfolio especially.
+```{r}
+priorls5 = trainpriorsureg(modelfrmls = capmfrmls5,
+                           data = prmdf,
+                           trainpct = .15)
+
+priorls10 = trainpriorsureg(modelfrmls = capmfrmls10,
+                            data = prmdf,
+                            trainpct = .15)
+
+priorls15 = trainpriorsureg(modelfrmls = capmfrmls15,
+                            data = prmdf,
+                            trainpct = .15)
+
+beta0 = priorls15[["beta0_"]]
+write.csv(beta0) # should also include the path you want to store the file
+
+B0 = priorls15[["B0_"]]
+write.csv(B0) ## should also include the path you want to store the file
+
+Rho = priorls15[["rho"]]
+
+Sigma0 = priorls15[["Sigma0_"]]
+write.csv(Sigma0) ## should also include the path you want to store the file
+
+priorls20 = trainpriorsureg(modelfrmls = capmfrmls20,
+                            data = prmdf,
+                            trainpct = .15)
+
+priorls25 = trainpriorsureg(modelfrmls = capmfrmls25,
+                            data = prmdf,
+                            trainpct = .15)
+
+priorls30 = trainpriorsureg(modelfrmls = capmfrmls30,
+                            data = prmdf,
+                            trainpct = .15)
+```
+
+Fourth part:
+In this part we construct an optimal portfolio for each portfolio setting, using the 4-year risk free rate and the geometric average market return as our portfolio target return.
+```{r}
+marketreturn = 1+prmdf[,31]
+geometricmean = exp(mean(log(marketreturn)))-1
+portmean = geometricmean
+
+rskfree =getrskfree(from = "2014-06-01",to = "2018-06-01");
+
+capmportls5 = makebayesportfolioaftersureg(portmean = portmean,
+                                           modelfrmls = capmfrmls5,
+                                           data = prmdf)
+
+capmportls10 = makebayesportfolioaftersureg(portmean = portmean,
+                                           modelfrmls = capmfrmls10,
+                                           data = prmdf)
+
+capmportls15 = makebayesportfolioaftersureg(portmean = portmean,
+                                            modelfrmls = capmfrmls15,
+                                            data = prmdf)
+
+capmportls20 = makebayesportfolioaftersureg(portmean = portmean,
+                                            modelfrmls = capmfrmls20,
+                                            data = prmdf)
+
+capmportls25 = makebayesportfolioaftersureg(portmean = portmean,
+                                            modelfrmls = capmfrmls25,
+                                            data = prmdf)
+
+capmportls30 = makebayesportfolioaftersureg(portmean = portmean,
+                                            modelfrmls = capmfrmls30,
+                                            data = prmdf)
+```
+
+Fifth part:
+In this part we plot a graph of number of stocks in a portfolio and the standard deviation of the portfolio, showing that the diversification theory is correct.
+```{r}
+options(repos=c(CRAN="https://cran.cnr.berkeley.edu/"))
+newpacks = c("tidyverse","quantmod",
+             "lubridate","xts",
+             "Rcpp",
+             "RcppArmadillo",
+             "reshape2",
+             "RColorBrewer",
+             "scales",
+             "grid",
+             "coda",
+             "bayesm",
+             "MCMCpack"
+)
+newpacks1 <- newpacks[!(newpacks %in% installed.packages()[,"Package"])]
+if(length(newpacks1)) install.packages(newpacks1,
+                                       dependencies = TRUE)
+
+lapply(newpacks,
+       library,
+       character.only = T)
+remove(newpacks, newpacks1)
+
+p = ggplot(data = port,
+           mapping = aes(x = numStock,y = std))
+p2 = p + geom_point
+plot(p2)
+```
+
